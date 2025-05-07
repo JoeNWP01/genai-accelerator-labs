@@ -54,16 +54,13 @@ uv sync
 ```
 
 If you're using VS Code or Cursor I recommend to update your `.code-workspace` file:
+
 ```json
-{
-	"folders": [
-		{
-			"path": "."
-		}
-	],
-	"settings": {
-		"python.analysis.extraPaths": ["./app", "./playground"],
-	}
+"settings": {
+   "python.analysis.extraPaths": [
+      "./app",
+      "./playground"
+   ]
 }
 ```
 
