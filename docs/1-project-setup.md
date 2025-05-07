@@ -1,5 +1,21 @@
 # AI Executive Assistant - Project Setup
 
+## This Week's Goals
+
+1. Introduction to the project
+2. Understanding the project architecture
+3. Seting up and configuring Nylas
+4. Setting up your webhook server
+5. Receiving your first webhook
+6. Understanding the webhook data model
+
+## Additional Resources
+
+- [Pydantic](https://docs.pydantic.dev/latest/)
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [Pinggy](https://pinggy.io/)
+- [Nylas](https://developer.nylas.com/docs/v3/getting-started/)
+
 ## API Quickstart
 
 This tutorial will walk you through creating a functional app with Nylas by setting up user authentication using the Nylas API in just a few simple steps.
