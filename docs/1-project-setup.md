@@ -87,7 +87,7 @@ If you're using VS Code or Cursor I recommend to update your `.code-workspace` f
 ### 5. Configuration
 1. Copy the environment template:
    ```bash
-   cp env.example .env
+   cp .env.example .env
    ```
 
 2. Update `.env` with your Nylas credentials:
