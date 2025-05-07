@@ -8,7 +8,7 @@ The AI Executive Assistant monitors your inbox, processes emails intelligently, 
 
 ## Why Nylas?
 
-This project leverages the Nylas API platform for several key advantages:
+This project leverages the [Nylas API platform](https://www.nylas.com/) for several key advantages:
 
 - **Unified API**: Nylas provides a single API to connect with Gmail, Outlook, Exchange, and other email/calendar providers
 - **Authentication Handling**: Nylas manages OAuth flows and credential refreshing
