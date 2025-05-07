@@ -43,9 +43,6 @@ This tutorial will walk you through creating a functional app with Nylas by sett
    # Switch to the correct branch
    git checkout project/ai-assistant-week-1
 
-   # Navigate to the project directory
-   cd project/ai-assistant-week-1
-
    # Create a new git repository
    rm -rf .git
    git init
