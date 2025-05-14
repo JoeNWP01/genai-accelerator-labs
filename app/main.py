@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from schemas.nylas_email_schema import EmailObject
 from schemas.nylas_webhook_schema import WebhookEvent
 
-load_dotenv()
+load_dotenv(override=True)
 
 # Array to hold webhook dataclass
 webhooks = []
