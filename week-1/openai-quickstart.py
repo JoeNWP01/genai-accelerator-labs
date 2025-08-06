@@ -30,7 +30,7 @@ class BedTimeStory(BaseModel):
 # response = client.responses.create(
 #     model="gpt-4.1", input="Write a one-sentence bedtime story about a unicorn."
 # )
-
+# This is new:
 response = client.responses.parse(
     model="gpt-4.1",
     input=[
