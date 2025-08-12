@@ -80,6 +80,9 @@ target/
 # Mac OS-specific storage files
 .DS_Store
 
+# UV ignore files
+uv.lock
+
 # vim
 *.swp
 *.swo
