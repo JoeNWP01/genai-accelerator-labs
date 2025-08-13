@@ -1,0 +1,477 @@
+Create Nylas Interface for GenAi project
+Awesome—let’s wire up a tiny FastAPI-powered UI that introspects your NylasService class, shows a list of available public methods, renders a form for the parameters of the method you pick, and then executes it with whatever you enter.
+
+Here’s the quick game plan (then the code right after):
+
+    Instantiate your service once
+    We’ll create a single NylasService() instance at app startup so it can reuse the same configured Client.
+
+    Introspect the class to discover methods and parameters
+    Using inspect.getmembers and inspect.signature, we’ll:
+
+    list only public instance methods (no underscore-prefixed methods, no __dunder__ methods),
+
+    extract each method’s parameter names, kinds, defaults, and (optionally) type hints.
+
+    Build a simple web UI
+    Routes:
+
+    GET / — List all callable methods found (e.g., download_attachment, load_webhook_data, etc.)
+
+    GET /method/{name} — Show a form with dynamic inputs for that method’s parameters (based on the signature)
+
+    POST /method/{name} — Validate & coerce form inputs, call the method, then render the results
+
+    Handle outputs safely
+
+    If the method returns a dict or list, we’ll pretty-print JSON.
+
+    If it returns bytes (like file content), we’ll either show the size or offer a download response (e.g., for attachments).
+
+    If it returns something else, we’ll show its repr() and a JSON dump attempt when possible.
+
+    Security & safety notes (important)
+
+    The UI only exposes public methods you chose to keep public—anything “dangerous” should be private (prefix with _) or explicitly excluded in the ALLOWED_METHODS list below.
+
+    No arbitrary code execution—only whitelisted methods on your own class are callable.
+
+    This is a developer console; if you tunnel it (Pinggy) to the public internet, add basic auth or IP restrictions before exposing.
+
+    Run it locally and tunnel with Pinggy
+
+    Start FastAPI (e.g., uvicorn app:app --reload --host 0.0.0.0 --port 8000)
+
+    Expose it with Pinggy (example: pinggy http://localhost:8000) and use the public URL you get.
+
+
+==================
+Code
+
+Project layout
+
+nylas_console/
+├─ app.py
+├─ nylas_service.py        # your NylasService lives here (or import from your existing module)
+└─ templates/
+   ├─ base.html
+   ├─ index.html
+   ├─ method.html
+   └─ result.html
+
+=============================
+nylas_service.py
+
+(Use your real class; here’s your snippet wrapped in a file. Adjust imports as needed.)
+
+# nylas_service.py
+import os
+import json
+from pathlib import Path
+from nylas import Client  # ensure nylas sdk is installed
+# pip install nylas
+
+class NylasService:
+    def __init__(self):
+        self.client = Client(
+            api_key=os.environ.get("NYLAS_API_KEY"),
+            api_uri=os.environ.get("NYLAS_API_URI"),
+        )
+
+    def load_webhook_data(self, uuid: str):
+        """Load webhook data from a JSON file in the events directory."""
+        base_dir = Path(__file__).resolve().parent
+        events_dir = base_dir / "requests" / "events"
+        file_path = events_dir / f"{uuid}.json"
+
+        if not file_path.exists():
+            raise FileNotFoundError(f"No webhook data found for UUID: {uuid}")
+
+        with open(file_path, "r") as f:
+            return json.load(f)
+
+    def download_attachment(self, attachment_id: str, grant_id: str, message_id: str):
+        """Download an attachment from Nylas."""
+        # Get the attachment
+        attachment = self.client.attachments.find(
+            identifier=grant_id,
+            attachment_id=attachment_id,
+            query_params={"message_id": message_id},
+        )
+
+        # Download the file bytes
+        file_content = self.client.attachments.download_bytes(
+            identifier=grant_id,
+            attachment_id=attachment_id,
+            query_params={"message_id": message_id},
+        )
+
+        return {
+            "content": file_content,
+            "content_type": attachment.data.content_type,
+            "filename": attachment.data.filename,
+        }
+
+=======================================
+app.py
+
+A FastAPI app that introspects and executes methods with a simple UI.
+
+# app.py
+import inspect
+import json
+from typing import Any, Dict
+
+from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from nylas_service import NylasService
+
+app = FastAPI(title="Nylas Method Console")
+
+templates = Jinja2Templates(directory="templates")
+
+# Instantiate your service once
+service = NylasService()
+
+# Optional: Whitelist methods you want visible (safer!)
+# Leave empty to allow all *public* methods (no leading underscore).
+ALLOWED_METHODS = {
+    "download_attachment",
+    "load_webhook_data",
+    # Add any other safe public methods on NylasService you want exposed
+}
+
+def get_public_methods(obj):
+    """Return a dict of public, callable methods: name -> function"""
+    all_members = inspect.getmembers(obj, predicate=inspect.ismethod)
+    public = {}
+    for name, func in all_members:
+        if name.startswith("_"):
+            continue
+        if ALLOWED_METHODS and name not in ALLOWED_METHODS:
+            continue
+        public[name] = func
+    return public
+
+def signature_to_fields(sig: inspect.Signature):
+    """
+    Convert a method signature into a list of field dicts:
+    [{'name':..., 'required':..., 'default':..., 'annotation':...}, ...]
+    """
+    fields = []
+    for name, param in sig.parameters.items():
+        # Skip 'self'
+        if name == "self":
+            continue
+        ann = None
+        if param.annotation is not inspect._empty:
+            ann = getattr(param.annotation, "__name__", str(param.annotation))
+        fields.append({
+            "name": name,
+            "required": param.default is inspect._empty,
+            "default": None if param.default is inspect._empty else param.default,
+            "annotation": ann,
+            "kind": str(param.kind),
+        })
+    return fields
+
+def coerce_value(text: str, annotation: str | None) -> Any:
+    """Best-effort coercion from text to type indicated by annotation."""
+    if text is None:
+        return None
+    text = text.strip()
+
+    # If empty string, treat as None unless required
+    if text == "":
+        return None
+
+    # Simple coercions—extend as needed
+    if annotation in ("int", "builtins.int"):
+        return int(text)
+    if annotation in ("float", "builtins.float"):
+        return float(text)
+    if annotation in ("bool", "builtins.bool"):
+        # Accept true/false/1/0
+        lowered = text.lower()
+        if lowered in ("true", "1", "yes", "y", "on"):
+            return True
+        if lowered in ("false", "0", "no", "n", "off"):
+            return False
+        raise ValueError(f"Cannot interpret '{text}' as bool")
+    if annotation in ("dict", "list", "typing.Dict", "typing.List"):
+        # Try JSON parse
+        return json.loads(text)
+    # Default: string
+    return text
+
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    methods = get_public_methods(service)
+    methods_info = []
+    for name, func in methods.items():
+        sig = inspect.signature(func)
+        fields = signature_to_fields(sig)
+        methods_info.append({
+            "name": name,
+            "doc": inspect.getdoc(func) or "",
+            "fields": fields,
+        })
+    methods_info.sort(key=lambda m: m["name"])
+    return templates.TemplateResponse("index.html", {"request": request, "methods": methods_info})
+
+@app.get("/method/{name}", response_class=HTMLResponse)
+def method_form(name: str, request: Request):
+    methods = get_public_methods(service)
+    if name not in methods:
+        raise HTTPException(status_code=404, detail="Method not found or not allowed")
+    func = methods[name]
+    sig = inspect.signature(func)
+    fields = signature_to_fields(sig)
+    return templates.TemplateResponse("method.html", {
+        "request": request,
+        "method_name": name,
+        "doc": inspect.getdoc(func) or "",
+        "fields": fields
+    })
+
+@app.post("/method/{name}", response_class=HTMLResponse)
+async def invoke_method(name: str, request: Request):
+    methods = get_public_methods(service)
+    if name not in methods:
+        raise HTTPException(status_code=404, detail="Method not found or not allowed")
+
+    func = methods[name]
+    sig = inspect.signature(func)
+    fields = signature_to_fields(sig)
+
+    # Collect form inputs
+    form = await request.form()
+    kwargs: Dict[str, Any] = {}
+    errors = []
+
+    for field in fields:
+        raw = form.get(field["name"])
+        try:
+            value = coerce_value(raw, field["annotation"])
+            if value is None and field["required"]:
+                errors.append(f"Missing required field: {field['name']}")
+            else:
+                kwargs[field["name"]] = value
+        except Exception as e:
+            errors.append(f"{field['name']}: {e}")
+
+    if errors:
+        return templates.TemplateResponse("method.html", {
+            "request": request,
+            "method_name": name,
+            "doc": inspect.getdoc(func) or "",
+            "fields": fields,
+            "errors": errors,
+            "values": dict(form),
+        }, status_code=400)
+
+    # Invoke the method
+    try:
+        result = func(**kwargs)
+    except Exception as e:
+        return templates.TemplateResponse("result.html", {
+            "request": request,
+            "method_name": name,
+            "kwargs": kwargs,
+            "error": repr(e),
+        }, status_code=500)
+
+    # If result looks like a downloaded attachment, offer a download link
+    if isinstance(result, dict) and "content" in result and isinstance(result["content"], (bytes, bytearray)):
+        filename = result.get("filename") or "download.bin"
+        content_type = result.get("content_type") or "application/octet-stream"
+        return StreamingResponse(
+            iter([result["content"]]),
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
+    # Otherwise render a result page
+    # Try to pretty-print JSON-able results
+    pretty_json = None
+    try:
+        pretty_json = json.dumps(result, indent=2, default=str)
+    except Exception:
+        pretty_json = None
+
+    return templates.TemplateResponse("result.html", {
+        "request": request,
+        "method_name": name,
+        "kwargs": kwargs,
+        "result": result if pretty_json is None else None,
+        "pretty_json": pretty_json,
+    })
+
+======================================
+templates/base.html
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Nylas Method Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+    a { text-decoration: none; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+    .btn { display:inline-block; padding: 0.5rem 0.8rem; border-radius: 8px; border: 1px solid #ccc; }
+    .btn:hover { background: #f5f5f5; }
+    .danger { color:#b00020 }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .muted { color: #666; font-size: 0.9rem; }
+    label { display:block; margin-top: 0.75rem; }
+    input, textarea { width: 100%; padding: 0.5rem; border:1px solid #ccc; border-radius: 6px; }
+    code, pre { background: #f6f8fa; border-radius: 6px; padding: 0.5rem; }
+    header { margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Nylas Method Console</h1>
+    <p class="muted">Run selected public methods of your <code>NylasService</code> with parameters.</p>
+    <p><a class="btn" href="/">Home</a></p>
+  </header>
+  {% block content %}{% endblock %}
+</body>
+</html>
+
+====================================
+
+templates/index.html
+
+{% extends "base.html" %}
+{% block content %}
+<div class="grid">
+  {% for m in methods %}
+  <div class="card">
+    <h3 style="margin-top:0">{{ m.name }}</h3>
+    {% if m.doc %}
+      <p class="muted">{{ m.doc }}</p>
+    {% endif %}
+    {% if m.fields|length == 0 %}
+      <p><strong>No parameters.</strong></p>
+    {% else %}
+      <details>
+        <summary>Parameters</summary>
+        <ul>
+          {% for f in m.fields %}
+          <li>
+            <code>{{ f.name }}</code>
+            {% if f.annotation %}<span class="muted">: {{ f.annotation }}</span>{% endif %}
+            {% if f.required %}<strong> (required)</strong>{% else %} (default: <code>{{ f.default }}</code>){% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
+    <p style="margin-top:1rem"><a class="btn" href="/method/{{ m.name }}">Run {{ m.name }}</a></p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+=======================================
+
+templates/method.html
+
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0">{{ method_name }}</h2>
+  {% if doc %}<p class="muted">{{ doc }}</p>{% endif %}
+
+  {% if errors %}
+    <div class="danger">
+      <p><strong>Errors:</strong></p>
+      <ul>
+        {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <form method="post" action="/method/{{ method_name }}">
+    {% for f in fields %}
+      <label for="{{ f.name }}">
+        {{ f.name }}
+        {% if f.annotation %}<span class="muted">({{ f.annotation }})</span>{% endif %}
+        {% if f.required %}<strong>*</strong>{% endif %}
+      </label>
+      <input
+        id="{{ f.name }}"
+        name="{{ f.name }}"
+        value="{{ (values and values.get(f.name)) or '' }}"
+        placeholder="{{ f.default if not f.required else 'required' }}"
+      />
+    {% endfor %}
+    <div style="margin-top:1rem">
+      <button class="btn" type="submit">Run</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+=====================================
+templates/result.html
+
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0">Result: {{ method_name }}</h2>
+  <p class="muted">Args: <code>{{ kwargs }}</code></p>
+
+  {% if error %}
+    <p class="danger"><strong>Error:</strong> <code>{{ error }}</code></p>
+  {% else %}
+    {% if pretty_json %}
+      <h3>JSON</h3>
+      <pre>{{ pretty_json }}</pre>
+    {% else %}
+      <h3>Value</h3>
+      <pre>{{ result }}</pre>
+    {% endif %}
+    <p class="muted">If the method returned raw bytes (e.g., an attachment), your browser should have prompted a download.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+=============================
+How to run
+
+    Install deps
+
+pip install fastapi uvicorn jinja2 nylas
+
+    Set env vars for Nylas
+
+export NYLAS_API_KEY="your_api_key"
+export NYLAS_API_URI="https://api.us.nylas.com"   # or your region/host
+
+    Start FastAPI
+
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+
+    Expose with Pinggy (example)
+
+pinggy http://localhost:8000
+
+Use the public URL Pinggy prints to access the UI from anywhere (again: consider adding basic auth/proxy if you’ll leave it exposed).
+Using it (example)
+
+    Open / → click download_attachment
+
+    Enter attachment_id, grant_id, message_id
+
+    Submit → if successful, you’ll be prompted to download the file using the returned filename and content type
+
+If you want to add more methods, simply make them public in NylasService and add their names to ALLOWED_METHODS.
+
+If you want this UI to double as a webhook receiver for Nylas (since you have Pinggy), we can add a /webhook POST route next—just say the word and I’ll extend the app.

@@ -1,0 +1,45 @@
+{
+    "specversion": "1.0",
+    "type": "message.created",
+    "source": "/google/emails/incremental",
+    "id": "tVuCt5hxbFCNkEbnqG3ufF2299",
+    "time": 1755062299,
+    "webhook_delivery_attempt": 1,
+    "data": {
+        "application_id": "6e63b5a1-8c9c-44c1-bf57-b20be8746db7",
+        "object": {
+            "attachments": [],
+            "bcc": [],
+            "body": "<div dir=\"ltr\">HELLO AGAIN</div>\r\n",
+            "cc": [],
+            "date": 1755062284,
+            "folders": [
+                "UNREAD",
+                "IMPORTANT",
+                "SENT",
+                "INBOX"
+            ],
+            "from": [
+                {
+                    "email": "joe.williams7171@gmail.com",
+                    "name": "Joe Williams"
+                }
+            ],
+            "grant_id": "7892c81b-2a15-4e03-a629-3904f9d6da41",
+            "id": "198a1db9fb35e3ce",
+            "object": "message",
+            "reply_to": [],
+            "snippet": "HELLO AGAIN",
+            "starred": false,
+            "subject": "test send after errors",
+            "thread_id": "198a1db5a5e4dafe",
+            "to": [
+                {
+                    "email": "joe.williams7171@gmail.com",
+                    "name": "Joe Williams"
+                }
+            ],
+            "unread": true
+        }
+    }
+}

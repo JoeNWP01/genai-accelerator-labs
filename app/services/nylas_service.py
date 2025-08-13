@@ -1,6 +1,7 @@
 import os
 import json
 from pathlib import Path
+from turtle import down
 from nylas import Client
 
 
@@ -44,3 +45,24 @@ class NylasService:
             "content_type": attachment.data.content_type,
             "filename": attachment.data.filename,
         }
+
+# To Run download_attachment from this application from the command  below:
+# python -c "from your_module import NylasService; s = NylasService(); print(s.download_attachment('ATTACHMENT_ID', 'GRANT_ID', 'MESSAGE_ID'))"
+
+# If I want to instantiate the Nylas service and run download, see the code below. My next objective is to create an interface for it.
+"""
+# Step 1: Import and initialize the service
+service = NylasService()
+
+# Step 2: Call the method with your actual values
+result = service.download_attachment(
+    attachment_id="ATTACHMENT_ID_HERE",
+    grant_id="GRANT_ID_HERE",
+    message_id="MESSAGE_ID_HERE"
+)
+
+# Step 3: (Optional) Save the file
+with open(result["filename"], "wb") as f:
+    f.write(result["content"])
+print(f"Downloaded: {result['filename']}")
+"""

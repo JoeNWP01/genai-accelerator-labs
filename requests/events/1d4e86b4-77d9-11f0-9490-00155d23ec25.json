@@ -1,0 +1,45 @@
+{
+    "specversion": "1.0",
+    "type": "message.created",
+    "source": "/google/emails/realtime",
+    "id": "3p7JoptSKPfYNMQ5sMEUfi3380",
+    "time": 1755043380,
+    "webhook_delivery_attempt": 1,
+    "data": {
+        "application_id": "6e63b5a1-8c9c-44c1-bf57-b20be8746db7",
+        "object": {
+            "attachments": [],
+            "bcc": [],
+            "body": "<html>\r\n<head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\">\r\n<style type=\"text/css\" style=\"display:none;\"> P {margin-top:0;margin-bottom:0;} </style>\r\n</head>\r\n<body dir=\"ltr\">\r\n<div style=\"font-family: Aptos, &quot;Aptos_EmbeddedFont&quot;, &quot;Aptos_MSFontService&quot;, Calibri, Helvetica, sans-serif; font-size: 12pt; color: rgb(0, 0, 0);\" class=\"elementToProof\">\r\nHello 3</div>\r\n</body>\r\n</html>\r\n",
+            "cc": [],
+            "date": 1755043375,
+            "folders": [
+                "UNREAD",
+                "IMPORTANT",
+                "CATEGORY_PERSONAL",
+                "INBOX"
+            ],
+            "from": [
+                {
+                    "email": "JoeW@nwp-inc.com",
+                    "name": "Joe Williams"
+                }
+            ],
+            "grant_id": "7892c81b-2a15-4e03-a629-3904f9d6da41",
+            "id": "198a0bcb00b434c0",
+            "object": "message",
+            "reply_to": [],
+            "snippet": "Hello 3",
+            "starred": false,
+            "subject": "4th test",
+            "thread_id": "198a0bcb00b434c0",
+            "to": [
+                {
+                    "email": "joe.williams7171@gmail.com",
+                    "name": "Joe Williams"
+                }
+            ],
+            "unread": true
+        }
+    }
+}

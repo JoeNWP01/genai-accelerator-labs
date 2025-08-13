@@ -1,0 +1,45 @@
+{
+    "specversion": "1.0",
+    "type": "message.created",
+    "source": "/google/emails/realtime",
+    "id": "wUus4HVMRZyihZtEeBmEhf3367",
+    "time": 1755043367,
+    "webhook_delivery_attempt": 1,
+    "data": {
+        "application_id": "6e63b5a1-8c9c-44c1-bf57-b20be8746db7",
+        "object": {
+            "attachments": [],
+            "bcc": [],
+            "body": "<div dir=\"ltr\">hello</div>\r\n",
+            "cc": [],
+            "date": 1755043431,
+            "folders": [
+                "UNREAD",
+                "IMPORTANT",
+                "SENT",
+                "INBOX"
+            ],
+            "from": [
+                {
+                    "email": "joe.williams7171@gmail.com",
+                    "name": "Joe Williams"
+                }
+            ],
+            "grant_id": "7892c81b-2a15-4e03-a629-3904f9d6da41",
+            "id": "198a0bbf2672de50",
+            "object": "message",
+            "reply_to": [],
+            "snippet": "hello",
+            "starred": false,
+            "subject": "2nd Test",
+            "thread_id": "198a0bbbf9f09fc9",
+            "to": [
+                {
+                    "email": "joe.williams7171@gmail.com",
+                    "name": "Joe Williams"
+                }
+            ],
+            "unread": true
+        }
+    }
+}
