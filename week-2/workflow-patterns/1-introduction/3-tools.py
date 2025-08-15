@@ -5,6 +5,10 @@ import requests
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 """
@@ -80,6 +84,7 @@ def call_function(name, args):
 
 for tool_call in completion.choices[0].message.tool_calls:
     name = tool_call.function.name
+    #identify = tool_call.id
     args = json.loads(tool_call.function.arguments)
     messages.append(completion.choices[0].message)
 
@@ -91,7 +96,7 @@ for tool_call in completion.choices[0].message.tool_calls:
 # --------------------------------------------------------------
 # Step 4: Supply result and call model again
 # --------------------------------------------------------------
-
+#print(args)
 
 class WeatherResponse(BaseModel):
     temperature: float = Field(
@@ -116,3 +121,4 @@ completion_2 = client.beta.chat.completions.parse(
 final_response = completion_2.choices[0].message.parsed
 final_response.temperature
 final_response.response
+print(final_response.temperature)

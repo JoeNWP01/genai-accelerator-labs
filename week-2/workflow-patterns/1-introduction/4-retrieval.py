@@ -2,7 +2,11 @@ import json
 import os
 
 from openai import OpenAI
+from openai.types.shared import response_format_json_object
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -51,7 +55,7 @@ system_prompt = "You are a helpful assistant that answers questions from the kno
 
 messages = [
     {"role": "system", "content": system_prompt},
-    {"role": "user", "content": "What is the return policy?"},
+    {"role": "user", "content": "What is the return policy"},
 ]
 
 completion = client.chat.completions.create(
@@ -65,7 +69,7 @@ completion = client.chat.completions.create(
 # --------------------------------------------------------------
 
 completion.model_dump()
-
+print(messages)
 # --------------------------------------------------------------
 # Step 3: Execute search_kb function
 # --------------------------------------------------------------
@@ -74,6 +78,7 @@ completion.model_dump()
 def call_function(name, args):
     if name == "search_kb":
         return search_kb(**args)
+  
 
 
 for tool_call in completion.choices[0].message.tool_calls:
@@ -103,6 +108,7 @@ completion_2 = client.beta.chat.completions.parse(
     response_format=KBResponse,
 )
 
+
 # --------------------------------------------------------------
 # Step 5: Check model response
 # --------------------------------------------------------------
@@ -117,7 +123,7 @@ final_response.source
 
 messages = [
     {"role": "system", "content": system_prompt},
-    {"role": "user", "content": "What is the weather in Tokyo?"},
+    {"role": "user", "content": "What is the return policy."},
 ]
 
 completion_3 = client.beta.chat.completions.parse(
@@ -127,3 +133,5 @@ completion_3 = client.beta.chat.completions.parse(
 )
 
 completion_3.choices[0].message.content
+
+print(final_response.answer)

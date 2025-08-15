@@ -2,7 +2,9 @@ import os
 
 from openai import OpenAI
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -41,3 +43,4 @@ event = completion.choices[0].message.parsed
 event.name
 event.date
 event.participants
+print(event)
