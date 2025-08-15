@@ -86,6 +86,7 @@ def route_calendar_request(user_input: str) -> CalendarRequestType:
         response_format=CalendarRequestType,
     )
     result = completion.choices[0].message.parsed
+    print("this is result after response format in route calendar: ", result)
     logger.info(
         f"Request routed as: {result.request_type} with confidence: {result.confidence_score}"
     )
