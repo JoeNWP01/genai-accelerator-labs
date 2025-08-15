@@ -2,6 +2,8 @@ from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 from openai import OpenAI
+from dotenv import load_dotenv
+
 import os
 import logging
 
@@ -13,6 +15,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 model = "gpt-4o"
 
